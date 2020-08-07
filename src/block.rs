@@ -7,6 +7,7 @@ pub trait BlockId {}
 pub enum Block<Id: BlockId, PlayerId: PlayerIdT, EpochNumber: EpochNumberT> {
     Genesis {
         id: Id,
+        epoch: EpochNumber,
     },
     Child {
         id: Id,
