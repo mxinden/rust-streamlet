@@ -1,6 +1,5 @@
 use crate::epoch::EpochNumber as EpochNumberT;
 use crate::player::PlayerId as PlayerIdT;
-use crate::vote::Vote;
 
 pub trait BlockId {}
 
@@ -14,20 +13,20 @@ pub enum Block<Id: BlockId, PlayerId: PlayerIdT, EpochNumber: EpochNumberT> {
         author: PlayerId,
         /// `None` if genesis.
         parent: Box<Block<Id, PlayerId, EpochNumber>>,
-        votes: Vec<Vote<PlayerId, Id>>,
+        votes: Vec<PlayerId>,
         epoch: EpochNumber,
     },
 }
 
 impl<Id: BlockId, PlayerId: PlayerIdT, EpochNumber: EpochNumberT> Block<Id, PlayerId, EpochNumber> {
-    pub fn is_notarized(&self) -> bool {
+    pub fn is_notarized(&self, players: &[PlayerId]) -> bool {
         match self {
             Block::Genesis { .. } => true,
-            Block::Child { .. } => false,
+            Block::Child { votes, .. } => votes.len() >= players.len() * 2 / 3,
         }
     }
 
-    pub fn is_notarized_chain(&self) -> bool {
+    pub fn is_notarized_chain(&self, players: Vec<PlayerId>) -> bool {
         false
     }
 }

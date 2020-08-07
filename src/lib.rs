@@ -1,7 +1,6 @@
 mod block;
 mod epoch;
 mod player;
-mod vote;
 
 #[cfg(test)]
 mod tests {
@@ -11,6 +10,7 @@ mod tests {
 
     use rand::prelude::*;
 
+    #[derive(Clone, Copy)]
     struct Id(u64);
 
     impl Id {
@@ -42,11 +42,13 @@ mod tests {
             id: Id::new(),
             epoch: EpochNumber::genesis(),
         }
-        .is_notarized());
+        .is_notarized(&[]));
     }
 
     #[test]
     fn block_is_notarized_returns_false_for_block_with_empty_votes() {
+        let players = (0..100).map(|_| Id::new()).collect::<Vec<Id>>();
+
         let genesis_epoch = EpochNumber::genesis();
         let genesis_block = Block::Genesis {
             id: Id::new(),
@@ -61,6 +63,27 @@ mod tests {
             epoch: genesis_epoch.consecutive(),
         };
 
-        assert!(!child_block.is_notarized());
+        assert!(!child_block.is_notarized(players.as_slice()));
+    }
+
+    #[test]
+    fn block_with_two_thirds_is_notarized_returns_true() {
+        let players = (0..100).map(|_| Id::new()).collect::<Vec<Id>>();
+
+        let genesis_epoch = EpochNumber::genesis();
+        let genesis_block = Block::Genesis {
+            id: Id::new(),
+            epoch: genesis_epoch,
+        };
+
+        let child_block = Block::Child {
+            id: Id::new(),
+            author: Id::new(),
+            parent: Box::new(genesis_block),
+            votes: players.iter().take(66).cloned().collect(),
+            epoch: genesis_epoch.consecutive(),
+        };
+
+        assert!(child_block.is_notarized(players.as_slice()));
     }
 }
