@@ -86,4 +86,71 @@ mod tests {
 
         assert!(child_block.is_notarized(players.as_slice()));
     }
+
+    #[test]
+    fn is_notarized_chain_all_blocks_notarized() {
+        let players = (0..100).map(|_| Id::new()).collect::<Vec<Id>>();
+
+        let genesis_epoch = EpochNumber::genesis();
+        let genesis_block = Block::Genesis {
+            id: Id::new(),
+            epoch: genesis_epoch,
+        };
+
+        let first_child = Block::Child {
+            id: Id::new(),
+            author: Id::new(),
+            parent: Box::new(genesis_block),
+            votes: players.iter().take(66).cloned().collect(),
+            epoch: genesis_epoch.consecutive(),
+        };
+
+        let second_child = Block::Child {
+            id: Id::new(),
+            author: Id::new(),
+            parent: Box::new(first_child),
+            votes: players.iter().take(66).cloned().collect(),
+            epoch: genesis_epoch.consecutive(),
+        };
+
+        assert!(second_child.is_notarized_chain(players.as_slice()));
+    }
+
+    #[test]
+    fn is_notarized_chain_one_block_not_notarized() {
+        let players = (0..100).map(|_| Id::new()).collect::<Vec<Id>>();
+
+        let genesis_epoch = EpochNumber::genesis();
+        let genesis_block = Block::Genesis {
+            id: Id::new(),
+            epoch: genesis_epoch,
+        };
+
+        let first_child = Block::Child {
+            id: Id::new(),
+            author: Id::new(),
+            parent: Box::new(genesis_block),
+            votes: players.iter().take(66).cloned().collect(),
+            epoch: genesis_epoch.consecutive(),
+        };
+
+        // Not notarized.
+        let second_child = Block::Child {
+            id: Id::new(),
+            author: Id::new(),
+            parent: Box::new(first_child),
+            votes: players.iter().take(60).cloned().collect(),
+            epoch: genesis_epoch.consecutive(),
+        };
+
+        let third_child = Block::Child {
+            id: Id::new(),
+            author: Id::new(),
+            parent: Box::new(second_child),
+            votes: players.iter().take(66).cloned().collect(),
+            epoch: genesis_epoch.consecutive(),
+        };
+
+        assert!(!third_child.is_notarized_chain(players.as_slice()));
+    }
 }

@@ -1,6 +1,6 @@
 use crate::player::PlayerId as PlayerIdT;
 
-pub trait EpochNumber {
+pub trait EpochNumber: Clone {
     fn genesis() -> Self;
     fn consecutive(&self) -> Self;
 }
