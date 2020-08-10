@@ -1,5 +1,5 @@
-use crate::epoch::EpochNumber as EpochNumberT;
 use crate::block::{Block, BlockId as BlockIdT};
+use crate::epoch::EpochNumber as EpochNumberT;
 
 pub trait PlayerId: Clone {}
 

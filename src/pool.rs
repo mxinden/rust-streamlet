@@ -42,14 +42,20 @@ where
     /// block.
     //
     // TODO: Maybe just `is_finalized` is more versatile?
-    pub fn get_finalized<'a>(&'a self, block_id: &'a BlockId, players: &[PlayerId]) -> Option<&'a BlockId> {
+    pub fn get_finalized<'a>(
+        &'a self,
+        block_id: &'a BlockId,
+        players: &[PlayerId],
+    ) -> Option<&'a BlockId> {
         let block = self.blocks.get(block_id)?;
 
         let is_notarized = block.is_notarized(players);
 
         match block {
             Block::Genesis { id, .. } => return Some(id),
-            Block::Child { parent, .. } if !is_notarized => return self.get_finalized(parent, players),
+            Block::Child { parent, .. } if !is_notarized => {
+                return self.get_finalized(parent, players)
+            }
             Block::Child { parent, epoch, .. } => {
                 if !self.is_notarized_chain(block_id, players) {
                     return self.get_finalized(parent, players);
@@ -65,18 +71,20 @@ where
                     Block::Child { epoch, .. } => epoch,
                 };
 
-                if parent_parent_epoch.consecutive() == *parent_epoch && parent_epoch.consecutive() == *epoch {
+                if parent_parent_epoch.consecutive() == *parent_epoch
+                    && parent_epoch.consecutive() == *epoch
+                {
                     return Some(parent);
                 }
 
                 return self.get_finalized(parent, players);
             }
         }
-
     }
 }
 
-impl<BlockId, PlayerId, EpochNumber> FromIterator<Block<BlockId, PlayerId, EpochNumber>> for Pool<BlockId, PlayerId, EpochNumber>
+impl<BlockId, PlayerId, EpochNumber> FromIterator<Block<BlockId, PlayerId, EpochNumber>>
+    for Pool<BlockId, PlayerId, EpochNumber>
 where
     BlockId: Eq + Hash + BlockIdT,
 {

@@ -25,8 +25,8 @@ impl<Id: BlockId, PlayerId, EpochNumber> Block<Id, PlayerId, EpochNumber> {
 
     pub fn is_genesis(&self) -> bool {
         match self {
-            Block::Genesis {..} => true,
-            Block::Child {..} => false,
+            Block::Genesis { .. } => true,
+            Block::Child { .. } => false,
         }
     }
 
