@@ -8,6 +8,7 @@ use std::hash::Hash;
 use std::iter::FromIterator;
 
 /// Represents a pool of blocks.
+#[derive(Clone, Debug)]
 pub struct Pool<BlockId, PlayerId, EpochNumber> {
     blocks: HashMap<BlockId, Block<BlockId, PlayerId, EpochNumber>>,
 }
@@ -17,6 +18,18 @@ where
     BlockId: Eq + Hash + BlockIdT,
     EpochNumber: PartialEq + EpochNumberT,
 {
+    pub fn insert(&mut self, block: Block<BlockId, PlayerId, EpochNumber>) {
+        self.blocks.insert(block.get_id().clone(), block);
+    }
+
+    pub fn get(&self, block_id: &BlockId) -> Option<&Block<BlockId, PlayerId, EpochNumber>> {
+        self.blocks.get(block_id)
+    }
+
+    pub fn get_epoch(&self, block_id: &BlockId) -> Option<&EpochNumber> {
+        self.get(block_id).map(Block::get_epoch)
+    }
+
     pub fn is_notarized_chain(&self, block_id: &BlockId, players: &[PlayerId]) -> bool {
         let block = match self.blocks.get(block_id) {
             None => return false,
@@ -30,6 +43,22 @@ where
         match block {
             Block::Genesis { .. } => true,
             Block::Child { parent, .. } => self.is_notarized_chain(parent, players),
+        }
+    }
+
+    pub fn chain_contains(&self, head: &BlockId, block: &BlockId) -> bool {
+        if head == block {
+            return true;
+        }
+
+        match self.get(head) {
+            Some(Block::Genesis { id, .. }) => id == block,
+            Some(Block::Child { parent, .. }) => if parent == block {
+                true
+            } else {
+                self.chain_contains(parent, block)
+            },
+            None => false,
         }
     }
 
@@ -80,6 +109,10 @@ where
                 return self.get_finalized(parent, players);
             }
         }
+    }
+
+    pub fn iter_blocks(&self) -> impl Iterator<Item = &BlockId> {
+        self.blocks.keys()
     }
 }
 

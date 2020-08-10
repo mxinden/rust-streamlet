@@ -1,6 +1,6 @@
 pub trait BlockId: Clone {}
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Block<Id, PlayerId, EpochNumber> {
     Genesis {
         id: Id,
@@ -34,6 +34,13 @@ impl<Id: BlockId, PlayerId, EpochNumber> Block<Id, PlayerId, EpochNumber> {
         match self {
             Block::Genesis { id, .. } => id,
             Block::Child { id, .. } => id,
+        }
+    }
+
+    pub fn get_epoch(&self) -> &EpochNumber {
+        match self {
+            Block::Genesis { epoch, .. } => epoch,
+            Block::Child { epoch, .. } => epoch,
         }
     }
 }

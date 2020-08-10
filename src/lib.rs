@@ -5,11 +5,14 @@ pub mod pool;
 
 #[cfg(test)]
 mod tests {
-    use crate::block::{Block, BlockId};
+    use crate::block::{Block, BlockId as BlockIdT};
     use crate::epoch::EpochNumber as EpochNumberT;
-    use crate::player::PlayerId;
+    use crate::player::PlayerId as PlayerIdT;
+    use crate::pool::Pool;
 
+    use quickcheck::{Arbitrary, Gen, QuickCheck};
     use rand::prelude::*;
+    use std::collections::HashSet;
     use std::iter::FromIterator;
 
     #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
@@ -21,11 +24,11 @@ mod tests {
         }
     }
 
-    impl BlockId for Id {}
+    impl BlockIdT for Id {}
 
-    impl PlayerId for Id {}
+    impl PlayerIdT for Id {}
 
-    #[derive(Clone, Copy, PartialEq)]
+    #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
     struct EpochNumber(u64);
 
     impl EpochNumberT for EpochNumber {
@@ -116,7 +119,7 @@ mod tests {
             epoch: genesis_epoch.consecutive(),
         };
 
-        let p = crate::pool::Pool::from_iter(vec![genesis_block, first_child, second_child]);
+        let p = Pool::from_iter(vec![genesis_block, first_child, second_child]);
 
         assert!(p.is_notarized_chain(&second_child_id, players.as_slice()));
     }
@@ -157,12 +160,7 @@ mod tests {
             epoch: genesis_epoch.consecutive(),
         };
 
-        let p = crate::pool::Pool::from_iter(vec![
-            genesis_block,
-            first_child,
-            second_child,
-            third_child,
-        ]);
+        let p = Pool::from_iter(vec![genesis_block, first_child, second_child, third_child]);
 
         assert!(!p.is_notarized_chain(&third_child_id, players.as_slice()));
     }
@@ -232,7 +230,7 @@ mod tests {
             epoch: EpochNumber(7),
         };
 
-        let p = crate::pool::Pool::from_iter(
+        let p = Pool::from_iter(
             vec![
                 &block_0, &block_1, &block_2, &block_3, &block_4, &block_5, &block_6, &block_7,
             ]
@@ -287,5 +285,79 @@ mod tests {
             Some(block_6.get_id()),
             p.get_finalized(block_7.get_id(), &players)
         );
+    }
+
+    #[derive(Clone, Debug)]
+    struct NotarizedPool<BlockId, PlayerId, EpochNumber>(Pool<BlockId, PlayerId, EpochNumber>);
+
+    impl Arbitrary for NotarizedPool<Id, Id, EpochNumber> {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let mut max_epoch = EpochNumber::genesis();
+            let mut p = Pool::from_iter(vec![]);
+            let players = (0..100).map(|_| Id::new()).collect::<Vec<Id>>();
+
+            let mut heads = std::collections::VecDeque::new();
+            heads.push_back(Block::Genesis::<_, Id, _> {
+                id: Id(0),
+                epoch: max_epoch,
+            });
+
+            while let Some(head) = heads.pop_front() {
+                if max_epoch.0 > 100 {
+                    break;
+                }
+
+                for _ in 0..g.gen_range(0, 5) {
+                    max_epoch = max_epoch.consecutive();
+                    heads.push_back(Block::Child {
+                        id: Id::new(),
+                        author: Id::new(),
+                        parent: *head.get_id(),
+                        votes: players.iter().take(66).cloned().collect(),
+                        epoch: max_epoch,
+                    })
+                }
+
+                p.insert(head);
+            }
+
+            NotarizedPool(p)
+        }
+    }
+
+    #[test]
+    fn there_can_never_be_two_finalized_chains() {
+        fn prop(pool: NotarizedPool<Id, Id, EpochNumber>) {
+            let pool = pool.0;
+
+            // TODO: These are not the same players as used to construct the pool.
+            let players = (0..100).map(|_| Id::new()).collect::<Vec<Id>>();
+
+            let mut finalized_blocks = pool
+                .iter_blocks()
+                .map(|block_id| pool.get_finalized(block_id, &players))
+                .filter_map(|block_id| Some((pool.get_epoch(block_id?)?, block_id?)))
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .collect::<Vec<_>>();
+
+            finalized_blocks.sort_by(|a, b| a.0.cmp(b.0));
+
+            let youngest_block = match finalized_blocks.pop() {
+                Some(id) => id.1,
+                None => return,
+            };
+
+            for (_epoch, older_block) in finalized_blocks {
+                assert!(
+                    pool.chain_contains(youngest_block, older_block),
+                    "Expect all older blocks to be part of the chain of the \
+                     youngest finalized block to ensure there to be at most \
+                     one finalized chain.",
+                );
+            }
+        }
+
+        QuickCheck::new().quickcheck(prop as fn(_) -> _)
     }
 }
