@@ -1,11 +1,20 @@
-use crate::player::PlayerId as PlayerIdT;
+use std::time::Instant;
 
-pub trait EpochNumber: Clone {
-    fn genesis() -> Self;
-    fn consecutive(&self) -> Self;
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
+pub struct Epoch(u64);
+
+impl Epoch {
+    pub fn genesis() -> Self {
+        Epoch(0)
+    }
+
+    pub fn consecutive(&self) -> Self {
+        Epoch(self.0 + 1)
+    } 
 }
 
-pub struct Epoch<Number: EpochNumber, PlayerId: PlayerIdT> {
-    number: Number,
-    leader: PlayerId,
+impl From<u64> for Epoch {
+    fn from(e: u64) -> Self {
+        Epoch(e)
+    }
 }

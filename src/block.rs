@@ -1,21 +1,26 @@
-pub trait BlockId: Clone {}
+use crate::player::PlayerId;
+use crate::epoch::Epoch;
+
+use std::hash::Hash;
+
+pub trait BlockId: Clone + Eq + Hash {}
 
 #[derive(Clone, Debug)]
-pub enum Block<Id, PlayerId, EpochNumber> {
+pub enum Block<Id> {
     Genesis {
         id: Id,
-        epoch: EpochNumber,
+        epoch: Epoch,
     },
     Child {
         id: Id,
         author: PlayerId,
         parent: Id,
         votes: Vec<PlayerId>,
-        epoch: EpochNumber,
+        epoch: Epoch,
     },
 }
 
-impl<Id: BlockId, PlayerId, EpochNumber> Block<Id, PlayerId, EpochNumber> {
+impl<Id: BlockId> Block<Id> {
     pub fn is_notarized(&self, players: &[PlayerId]) -> bool {
         match self {
             Block::Genesis { .. } => true,
@@ -37,10 +42,10 @@ impl<Id: BlockId, PlayerId, EpochNumber> Block<Id, PlayerId, EpochNumber> {
         }
     }
 
-    pub fn get_epoch(&self) -> &EpochNumber {
+    pub fn get_epoch(&self) -> Epoch {
         match self {
-            Block::Genesis { epoch, .. } => epoch,
-            Block::Child { epoch, .. } => epoch,
+            Block::Genesis { epoch, .. } => *epoch,
+            Block::Child { epoch, .. } => *epoch,
         }
     }
 }

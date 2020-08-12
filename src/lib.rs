@@ -2,12 +2,14 @@ pub mod block;
 pub mod epoch;
 pub mod player;
 pub mod pool;
+pub mod schedule;
+pub mod simulator;
 
 #[cfg(test)]
 mod tests {
     use crate::block::{Block, BlockId as BlockIdT};
-    use crate::epoch::EpochNumber as EpochNumberT;
-    use crate::player::PlayerId as PlayerIdT;
+    use crate::epoch::Epoch;
+    use crate::player::PlayerId;
     use crate::pool::Pool;
 
     use quickcheck::{Arbitrary, Gen, QuickCheck};
@@ -26,43 +28,28 @@ mod tests {
 
     impl BlockIdT for Id {}
 
-    impl PlayerIdT for Id {}
-
-    #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
-    struct EpochNumber(u64);
-
-    impl EpochNumberT for EpochNumber {
-        fn genesis() -> Self {
-            EpochNumber(0)
-        }
-
-        fn consecutive(&self) -> Self {
-            EpochNumber(self.0 + 1)
-        }
-    }
-
     #[test]
     fn block_is_notarized_returns_true_for_genesis() {
-        assert!(Block::<Id, Id, EpochNumber>::Genesis {
+        assert!(Block::<Id>::Genesis {
             id: Id::new(),
-            epoch: EpochNumber::genesis(),
+            epoch: Epoch::genesis(),
         }
         .is_notarized(&[]));
     }
 
     #[test]
     fn block_is_notarized_returns_false_for_block_with_empty_votes() {
-        let players = (0..100).map(|_| Id::new()).collect::<Vec<Id>>();
+        let players = (0..100).map(|id| id.into()).collect::<Vec<PlayerId>>();
 
-        let genesis_epoch = EpochNumber::genesis();
-        let genesis_block = Block::Genesis::<Id, Id, EpochNumber> {
+        let genesis_epoch = Epoch::genesis();
+        let genesis_block = Block::Genesis::<Id> {
             id: Id::new(),
             epoch: genesis_epoch,
         };
 
         let child_block = Block::Child {
             id: Id::new(),
-            author: Id::new(),
+            author: 0.into(),
             parent: genesis_block.get_id().clone(),
             votes: vec![],
             epoch: genesis_epoch.consecutive(),
@@ -73,17 +60,17 @@ mod tests {
 
     #[test]
     fn block_with_two_thirds_is_notarized_returns_true() {
-        let players = (0..100).map(|_| Id::new()).collect::<Vec<Id>>();
+        let players = (0..100).map(|id| id.into()).collect::<Vec<PlayerId>>();
 
-        let genesis_epoch = EpochNumber::genesis();
-        let genesis_block = Block::Genesis::<Id, Id, EpochNumber> {
+        let genesis_epoch = Epoch::genesis();
+        let genesis_block = Block::Genesis::<Id> {
             id: Id::new(),
             epoch: genesis_epoch,
         };
 
         let child_block = Block::Child {
             id: Id::new(),
-            author: Id::new(),
+            author: 0.into(),
             parent: genesis_block.get_id().clone(),
             votes: players.iter().take(66).cloned().collect(),
             epoch: genesis_epoch.consecutive(),
@@ -94,17 +81,17 @@ mod tests {
 
     #[test]
     fn is_notarized_chain_all_blocks_notarized() {
-        let players = (0..100).map(|_| Id::new()).collect::<Vec<Id>>();
+        let players = (0..100).map(|id| id.into()).collect::<Vec<PlayerId>>();
 
-        let genesis_epoch = EpochNumber::genesis();
-        let genesis_block = Block::Genesis::<Id, Id, EpochNumber> {
+        let genesis_epoch = Epoch::genesis();
+        let genesis_block = Block::Genesis::<Id> {
             id: Id::new(),
             epoch: genesis_epoch,
         };
 
         let first_child = Block::Child {
             id: Id::new(),
-            author: Id::new(),
+            author: 0.into(),
             parent: genesis_block.get_id().clone(),
             votes: players.iter().take(66).cloned().collect(),
             epoch: genesis_epoch.consecutive(),
@@ -113,7 +100,7 @@ mod tests {
         let second_child_id = Id::new();
         let second_child = Block::Child {
             id: second_child_id.clone(),
-            author: Id::new(),
+            author: 0.into(),
             parent: first_child.get_id().clone(),
             votes: players.iter().take(66).cloned().collect(),
             epoch: genesis_epoch.consecutive(),
@@ -126,17 +113,17 @@ mod tests {
 
     #[test]
     fn is_notarized_chain_one_block_not_notarized() {
-        let players = (0..100).map(|_| Id::new()).collect::<Vec<Id>>();
+        let players = (0..100).map(|id| id.into()).collect::<Vec<PlayerId>>();
 
-        let genesis_epoch = EpochNumber::genesis();
-        let genesis_block = Block::Genesis::<Id, Id, EpochNumber> {
+        let genesis_epoch = Epoch::genesis();
+        let genesis_block = Block::Genesis::<Id> {
             id: Id::new(),
             epoch: genesis_epoch,
         };
 
         let first_child = Block::Child {
             id: Id::new(),
-            author: Id::new(),
+            author: 0.into(),
             parent: genesis_block.get_id().clone(),
             votes: players.iter().take(66).cloned().collect(),
             epoch: genesis_epoch.consecutive(),
@@ -145,7 +132,7 @@ mod tests {
         // Not notarized.
         let second_child = Block::Child {
             id: Id::new(),
-            author: Id::new(),
+            author: 0.into(),
             parent: first_child.get_id().clone(),
             votes: players.iter().take(60).cloned().collect(),
             epoch: genesis_epoch.consecutive(),
@@ -154,7 +141,7 @@ mod tests {
         let third_child_id = Id::new();
         let third_child = Block::Child {
             id: third_child_id.clone(),
-            author: Id::new(),
+            author: 0.into(),
             parent: second_child.get_id().clone(),
             votes: players.iter().take(66).cloned().collect(),
             epoch: genesis_epoch.consecutive(),
@@ -167,67 +154,67 @@ mod tests {
 
     #[test]
     fn paper_figure_1() {
-        let players = (0..100).map(|_| Id::new()).collect::<Vec<Id>>();
+        let players = (0..100).map(|id| id.into()).collect::<Vec<PlayerId>>();
 
-        let block_0 = Block::Genesis::<_, Id, _> {
+        let block_0 = Block::Genesis::<_> {
             id: Id(0),
-            epoch: EpochNumber(0),
+            epoch: Epoch::genesis(),
         };
 
         let block_1 = Block::Child {
             id: Id(1),
-            author: Id::new(),
+            author: 0.into(),
             parent: block_0.get_id().clone(),
             votes: players.iter().take(66).cloned().collect(),
-            epoch: EpochNumber(1),
+            epoch: 1.into(),
         };
 
         let block_2 = Block::Child {
             id: Id(2),
-            author: Id::new(),
+            author: 0.into(),
             parent: block_0.get_id().clone(),
             votes: players.iter().take(66).cloned().collect(),
-            epoch: EpochNumber(2),
+            epoch: 2.into(),
         };
 
         let block_3 = Block::Child {
             id: Id(3),
-            author: Id::new(),
+            author: 0.into(),
             parent: block_1.get_id().clone(),
             votes: players.iter().take(66).cloned().collect(),
-            epoch: EpochNumber(3),
+            epoch: 3.into(),
         };
 
         let block_4 = Block::Child {
             id: Id(4),
-            author: Id::new(),
+            author: 0.into(),
             parent: block_3.get_id().clone(),
             votes: players.iter().take(66).cloned().collect(),
-            epoch: EpochNumber(4),
+            epoch: 4.into(),
         };
 
         let block_5 = Block::Child {
             id: Id(5),
-            author: Id::new(),
+            author: 0.into(),
             parent: block_2.get_id().clone(),
             votes: players.iter().take(66).cloned().collect(),
-            epoch: EpochNumber(5),
+            epoch: 5.into(),
         };
 
         let block_6 = Block::Child {
             id: Id(6),
-            author: Id::new(),
+            author: 0.into(),
             parent: block_5.get_id().clone(),
             votes: players.iter().take(66).cloned().collect(),
-            epoch: EpochNumber(6),
+            epoch: 6.into(),
         };
 
         let block_7 = Block::Child {
             id: Id(7),
-            author: Id::new(),
+            author: 0.into(),
             parent: block_6.get_id().clone(),
             votes: players.iter().take(66).cloned().collect(),
-            epoch: EpochNumber(7),
+            epoch: 7.into(),
         };
 
         let p = Pool::from_iter(
@@ -288,22 +275,22 @@ mod tests {
     }
 
     #[derive(Clone, Debug)]
-    struct NotarizedPool<BlockId, PlayerId, EpochNumber>(Pool<BlockId, PlayerId, EpochNumber>);
+    struct NotarizedPool<BlockId>(Pool<BlockId>);
 
-    impl Arbitrary for NotarizedPool<Id, Id, EpochNumber> {
+    impl Arbitrary for NotarizedPool<Id> {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let mut max_epoch = EpochNumber::genesis();
+            let mut max_epoch = Epoch::genesis();
             let mut p = Pool::from_iter(vec![]);
-            let players = (0..100).map(|_| Id::new()).collect::<Vec<Id>>();
+            let players = (0..100).map(|id| id.into()).collect::<Vec<PlayerId>>();
 
             let mut heads = std::collections::VecDeque::new();
-            heads.push_back(Block::Genesis::<_, Id, _> {
+            heads.push_back(Block::Genesis::<_> {
                 id: Id(0),
                 epoch: max_epoch,
             });
 
             while let Some(head) = heads.pop_front() {
-                if max_epoch.0 > 100 {
+                if max_epoch > 100.into() {
                     break;
                 }
 
@@ -311,7 +298,7 @@ mod tests {
                     max_epoch = max_epoch.consecutive();
                     heads.push_back(Block::Child {
                         id: Id::new(),
-                        author: Id::new(),
+                        author: 0.into(),
                         parent: *head.get_id(),
                         votes: players.iter().take(66).cloned().collect(),
                         epoch: max_epoch,
@@ -327,11 +314,11 @@ mod tests {
 
     #[test]
     fn there_can_never_be_two_finalized_chains() {
-        fn prop(pool: NotarizedPool<Id, Id, EpochNumber>) {
+        fn prop(pool: NotarizedPool<Id>) {
             let pool = pool.0;
 
             // TODO: These are not the same players as used to construct the pool.
-            let players = (0..100).map(|_| Id::new()).collect::<Vec<Id>>();
+            let players = (0..100).map(|id| id.into()).collect::<Vec<PlayerId>>();
 
             let mut finalized_blocks = pool
                 .iter_blocks()
@@ -341,7 +328,7 @@ mod tests {
                 .into_iter()
                 .collect::<Vec<_>>();
 
-            finalized_blocks.sort_by(|a, b| a.0.cmp(b.0));
+            finalized_blocks.sort_by(|a, b| a.0.cmp(&b.0));
 
             let youngest_block = match finalized_blocks.pop() {
                 Some(id) => id.1,

@@ -1,6 +1,6 @@
 use crate::block::{Block, BlockId as BlockIdT};
-use crate::epoch::EpochNumber as EpochNumberT;
-use crate::player::PlayerId as PlayerIdT;
+use crate::epoch::Epoch;
+use crate::player::PlayerId;
 
 use std::cmp::Eq;
 use std::collections::HashMap;
@@ -9,24 +9,26 @@ use std::iter::FromIterator;
 
 /// Represents a pool of blocks.
 #[derive(Clone, Debug)]
-pub struct Pool<BlockId, PlayerId, EpochNumber> {
-    blocks: HashMap<BlockId, Block<BlockId, PlayerId, EpochNumber>>,
+pub struct Pool<BlockId> {
+    blocks: HashMap<BlockId, Block<BlockId>>,
 }
 
-impl<BlockId, PlayerId, EpochNumber> Pool<BlockId, PlayerId, EpochNumber>
-where
-    BlockId: Eq + Hash + BlockIdT,
-    EpochNumber: PartialEq + EpochNumberT,
-{
-    pub fn insert(&mut self, block: Block<BlockId, PlayerId, EpochNumber>) {
+impl<BlockId: BlockIdT> Pool<BlockId> {
+    pub fn new() -> Self {
+        Pool {
+            blocks: HashMap::new(),
+        }
+    }
+
+    pub fn insert(&mut self, block: Block<BlockId>) {
         self.blocks.insert(block.get_id().clone(), block);
     }
 
-    pub fn get(&self, block_id: &BlockId) -> Option<&Block<BlockId, PlayerId, EpochNumber>> {
+    pub fn get(&self, block_id: &BlockId) -> Option<&Block<BlockId>> {
         self.blocks.get(block_id)
     }
 
-    pub fn get_epoch(&self, block_id: &BlockId) -> Option<&EpochNumber> {
+    pub fn get_epoch(&self, block_id: &BlockId) -> Option<Epoch> {
         self.get(block_id).map(Block::get_epoch)
     }
 
@@ -53,11 +55,13 @@ where
 
         match self.get(head) {
             Some(Block::Genesis { id, .. }) => id == block,
-            Some(Block::Child { parent, .. }) => if parent == block {
-                true
-            } else {
-                self.chain_contains(parent, block)
-            },
+            Some(Block::Child { parent, .. }) => {
+                if parent == block {
+                    true
+                } else {
+                    self.chain_contains(parent, block)
+                }
+            }
             None => false,
         }
     }
@@ -116,12 +120,11 @@ where
     }
 }
 
-impl<BlockId, PlayerId, EpochNumber> FromIterator<Block<BlockId, PlayerId, EpochNumber>>
-    for Pool<BlockId, PlayerId, EpochNumber>
+impl<BlockId> FromIterator<Block<BlockId>> for Pool<BlockId>
 where
     BlockId: Eq + Hash + BlockIdT,
 {
-    fn from_iter<I: IntoIterator<Item = Block<BlockId, PlayerId, EpochNumber>>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = Block<BlockId>>>(iter: I) -> Self {
         Pool {
             blocks: iter.into_iter().map(|b| (b.get_id().clone(), b)).collect(),
         }

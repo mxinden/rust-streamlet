@@ -1,9 +1,43 @@
 use crate::block::{Block, BlockId as BlockIdT};
-use crate::epoch::EpochNumber as EpochNumberT;
+use crate::pool::Pool;
+use crate::schedule::Schedule;
 
-pub trait PlayerId: Clone {}
+use std::time::Instant;
 
-pub struct Player<Id: PlayerId, BlockId: BlockIdT, EpochNumber: EpochNumberT> {
-    id: Id,
-    chains: Vec<Block<BlockId, Id, EpochNumber>>,
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+pub struct PlayerId(u64);
+
+impl From<u64> for PlayerId {
+    fn from(id: u64) -> Self {
+        PlayerId(id)
+    }
+}
+
+pub struct Player<BlockId> {
+    id: PlayerId,
+    pool: Pool<BlockId>,
+    schedule: Schedule,
+}
+
+/// Messages send to a player.
+pub enum Incoming {}
+
+/// Messages send by a player.
+pub enum Outgoing {}
+
+impl<BlockId: BlockIdT> Player<BlockId> {
+    pub fn new(id: PlayerId, schedule: Schedule) -> Self {
+        Player {
+            id,
+            pool: Pool::new(),
+            schedule,
+        }
+    }
+    pub fn next(&mut self, now: Instant, incoming_msgs: Vec<Incoming>) -> Vec<Outgoing> {
+        if self.schedule.leader(now) == self.id {
+            println!("I {:?} am the leader in epoch {:?}", self.id, self.schedule.epoch(now));
+        }
+
+        vec![]
+    }
 }
