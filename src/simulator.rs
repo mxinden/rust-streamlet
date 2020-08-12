@@ -1,9 +1,9 @@
-use crate::block::{BlockId as BlockIdT};
+use crate::block::BlockId as BlockIdT;
 use crate::player::Player;
 use crate::schedule::Schedule;
 
-use std::time::{Duration, Instant};
 use rand::prelude::*;
+use std::time::{Duration, Instant};
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 struct Id(u64);
@@ -41,9 +41,7 @@ pub struct Builder {
 
 impl Default for Builder {
     fn default() -> Self {
-        Builder {
-            num_players: 100,
-        }
+        Builder { num_players: 100 }
     }
 }
 
@@ -54,10 +52,11 @@ impl Builder {
 
     pub fn build(self) -> Simulator {
         let schedule = Schedule::new(Instant::now(), self.num_players);
-        let players = (0..self.num_players).map(|id| (id as u64).into()).map(|id| Player::new(id, schedule)).collect();
+        let players = (0..self.num_players)
+            .map(|id| (id as u64).into())
+            .map(|id| Player::new(id, schedule))
+            .collect();
 
-        Simulator {
-            players,
-        }
+        Simulator { players }
     }
 }

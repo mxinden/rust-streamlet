@@ -10,7 +10,7 @@ impl Epoch {
 
     pub fn consecutive(&self) -> Self {
         Epoch(self.0 + 1)
-    } 
+    }
 }
 
 impl From<u64> for Epoch {

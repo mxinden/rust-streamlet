@@ -1,5 +1,5 @@
-use crate::player::PlayerId;
 use crate::epoch::Epoch;
+use crate::player::PlayerId;
 
 use std::hash::Hash;
 

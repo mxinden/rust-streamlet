@@ -35,7 +35,11 @@ impl<BlockId: BlockIdT> Player<BlockId> {
     }
     pub fn next(&mut self, now: Instant, incoming_msgs: Vec<Incoming>) -> Vec<Outgoing> {
         if self.schedule.leader(now) == self.id {
-            println!("I {:?} am the leader in epoch {:?}", self.id, self.schedule.epoch(now));
+            println!(
+                "I {:?} am the leader in epoch {:?}",
+                self.id,
+                self.schedule.epoch(now)
+            );
         }
 
         vec![]
